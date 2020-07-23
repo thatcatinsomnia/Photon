@@ -7,14 +7,16 @@ const Photon = {
     gallery: document.querySelector('.gallery'),
     searchForm: document.querySelector('.js-search-form'),
     searchInput: document.querySelector('.js-search-input'),
-    // submitButton: document.querySelector('.js-submit-button'),
     searchValue: '',
-    // apiSearchUrl: 'https://api.pexels.com/v1/search?per_page=24'
+    moreButton: document.querySelector('.js-more-button'),
+    page: 1,
+    currentSearch: ''
   },
 
   bindUI: function () {
     this.settings.searchInput.addEventListener('input', this.updateInput);
     this.settings.searchForm.addEventListener('submit', this.searchAndRenderPhotos);
+    this.settings.moreButton.addEventListener('click', this.fetchMorePhotos);
   },
 
   init: function () {
@@ -35,7 +37,6 @@ const Photon = {
           authorization: this.settings.auth
         }
       });
-      console.log(response);
       return response.data;
     } catch (error) {
       console.log(error.response);
@@ -44,12 +45,12 @@ const Photon = {
   },
 
   fetchAndRenderPhotos: async function () {
-    const response = await this.fetchDataFromApi('https://api.pexels.com/v1/curated?per_page=24');
+    let url = 'https://api.pexels.com/v1/curated?per_page=24';
+    const response = await this.fetchDataFromApi(url);
     this.renderPhotos(response.photos)
   },
 
   renderPhotos: function (photos) {
-    console.table(photos);
     photos.forEach(photo => {
       const galleryImage = document.createElement('div');
       galleryImage.classList.add('gallery__box')
@@ -67,10 +68,13 @@ const Photon = {
 
   searchAndRenderPhotos: async function (e) {
     e.preventDefault();
+    Photon.settings.page = 1;
+    Photon.settings.currentSearch = Photon.settings.searchValue;
 
     Photon.clear();
 
-    const response = await Photon.fetchDataFromApi(`https://api.pexels.com/v1/search?per_page=24&query=${Photon.settings.searchValue}`);
+    let url = `https://api.pexels.com/v1/search?per_page=24&query=${Photon.settings.searchValue}`;
+    const response = await Photon.fetchDataFromApi(url);
 
     Photon.renderPhotos(response.photos);
   },
@@ -78,6 +82,21 @@ const Photon = {
   clear: function () {
     this.settings.gallery.innerHTML = '';
     this.settings.searchInput.value = '';
+  },
+
+  fetchMorePhotos: async function () {
+    let url;
+    Photon.settings.page++;
+
+    if (Photon.settings.currentSearch) {
+      url = `https://api.pexels.com/v1/search?per_page=24&query=${Photon.settings.searchValue}&page=${Photon.settings.page}`;
+    } else {
+      url = `https://api.pexels.com/v1/curated?per_page=24&page=${Photon.settings.page}`;
+    }
+
+    const response = await Photon.fetchDataFromApi(url);
+
+    Photon.renderPhotos(response.photos);
   }
 };
 
