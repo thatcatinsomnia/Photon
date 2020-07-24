@@ -1,40 +1,39 @@
 import './style.scss';
 import axios from 'axios';
 
-const Photon = {
-  settings: {
-    auth: "563492ad6f917000010000014a4a2cea39ff494e9e9f3921f3253eb3",
-    gallery: document.querySelector('.gallery'),
-    searchForm: document.querySelector('.js-search-form'),
-    searchInput: document.querySelector('.js-search-input'),
-    searchValue: '',
-    moreButton: document.querySelector('.js-more-button'),
-    page: 1,
-    currentSearch: ''
-  },
+const Photon = (function () {
+  const auth = "563492ad6f917000010000014a4a2cea39ff494e9e9f3921f3253eb3";
+  const gallery = document.querySelector('.gallery');
+  const searchForm = document.querySelector('.js-search-form');
+  const searchInput = document.querySelector('.js-search-input');
+  const moreButton = document.querySelector('.js-more-button');
+  let searchValue = '';
+  let currentSearch = '';
+  let page = 1;
 
-  bindUI: function () {
-    this.settings.searchInput.addEventListener('input', this.updateInput);
-    this.settings.searchForm.addEventListener('submit', this.searchAndRenderPhotos);
-    this.settings.moreButton.addEventListener('click', this.fetchMorePhotos);
-  },
 
-  init: function () {
-    this.bindUI();
-    this.fetchAndRenderPhotos();
-  },
+  const bindUI = function () {
+    searchInput.addEventListener('input', updateInput);
+    searchForm.addEventListener('submit', searchAndRenderPhotos);
+    moreButton.addEventListener('click', fetchMorePhotos);
+  };
 
-  updateInput: function (e) {
-    Photon.settings.searchValue = e.target.value;
-  },
+  const init = function () {
+    bindUI();
+    fetchAndRenderPhotos();
+  };
 
-  fetchDataFromApi: async function (url) {
+  const updateInput = function (e) {
+    searchValue = e.target.value;
+  };
+
+  const fetchDataFromApi = async function (url) {
     try {
       const response = await axios(url, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
-          authorization: this.settings.auth
+          authorization: auth
         }
       });
       return response.data;
@@ -42,18 +41,34 @@ const Photon = {
       console.log(error.response);
       return error.response;
     }
-  },
+  };
 
-  fetchAndRenderPhotos: async function () {
+  const fetchAndRenderPhotos = async function () {
+    showLoader();
     let url = 'https://api.pexels.com/v1/curated?per_page=24';
-    const response = await this.fetchDataFromApi(url);
-    this.renderPhotos(response.photos)
-  },
+    const response = await fetchDataFromApi(url);
+    renderPhotos(response.photos);
+  };
 
-  renderPhotos: function (photos) {
+  const showLoader = function () {
+    const loader = document.createElement('div');
+    loader.innerHTML = `
+    <svg class="js-loader">
+      <circle class="loader" r="20" cx="50%" cy="50%" fill="none" stroke-width="7" stroke="#665eac" />
+    </svg>`;
+
+    gallery.appendChild(loader);
+  };
+
+  const removeLoader = function () {
+    document.querySelector('.js-loader').remove();
+  };
+
+  const renderPhotos = function (photos) {
+    removeLoader();
     photos.forEach(photo => {
       const galleryImage = document.createElement('div');
-      galleryImage.classList.add('gallery__box')
+      galleryImage.classList.add('gallery__box');
       galleryImage.innerHTML = `
       <div class="gallery__info">
         <p>${photo.photographer}</p>
@@ -62,42 +77,51 @@ const Photon = {
       <img class="gallery__image" src=${photo.src.large}></img>
       `;
 
-      this.settings.gallery.appendChild(galleryImage);
+      gallery.appendChild(galleryImage);
     });
-  },
+  };
 
-  searchAndRenderPhotos: async function (e) {
+  const searchAndRenderPhotos = async function (e) {
     e.preventDefault();
-    Photon.settings.page = 1;
-    Photon.settings.currentSearch = Photon.settings.searchValue;
 
-    Photon.clear();
+    page = 1;
+    currentSearch = searchValue;
 
-    let url = `https://api.pexels.com/v1/search?per_page=24&query=${Photon.settings.searchValue}`;
-    const response = await Photon.fetchDataFromApi(url);
+    if (!currentSearch) return;
 
-    Photon.renderPhotos(response.photos);
-  },
+    clear();
+    showLoader();
 
-  clear: function () {
-    this.settings.gallery.innerHTML = '';
-    this.settings.searchInput.value = '';
-  },
+    let url = `https://api.pexels.com/v1/search?per_page=24&query=${searchValue}`;
+    const response = await fetchDataFromApi(url);
 
-  fetchMorePhotos: async function () {
+    renderPhotos(response.photos);
+  };
+
+  const clear = function () {
+    gallery.innerHTML = '';
+    searchInput.value = '';
+  };
+
+  const fetchMorePhotos = async function () {
     let url;
-    Photon.settings.page++;
+    page++;
+    showLoader();
 
-    if (Photon.settings.currentSearch) {
-      url = `https://api.pexels.com/v1/search?per_page=24&query=${Photon.settings.searchValue}&page=${Photon.settings.page}`;
+    if (currentSearch) {
+      url = `https://api.pexels.com/v1/search?per_page=24&query=${searchValue}&page=${page}`;
     } else {
-      url = `https://api.pexels.com/v1/curated?per_page=24&page=${Photon.settings.page}`;
+      url = `https://api.pexels.com/v1/curated?per_page=24&page=${page}`;
     }
 
-    const response = await Photon.fetchDataFromApi(url);
+    const response = await fetchDataFromApi(url);
 
-    Photon.renderPhotos(response.photos);
+    renderPhotos(response.photos);
+  };
+
+  return {
+    init
   }
-};
+})();
 
 Photon.init();
